@@ -23,13 +23,9 @@ services:
     build:
       context: ./backend
       dockerfile: Dockerfile
-    environment:
-      DATABASE_URL: postgresql+asyncpg://postgres:password@db:5432/quantum_studio
-      SYNC_DATABASE_URL: postgresql://postgres:password@db:5432/quantum_studio
-      SECRET_KEY: "${SECRET_KEY:-change-me-in-production-minimum-32-chars}"
-      ANTHROPIC_API_KEY: "${ANTHROPIC_API_KEY:-}"
-      CORS_ORIGINS: "http://localhost:3000,http://localhost:5173,http://localhost:5174"
-      APP_ENV: production
+
+    env_file:
+    - ./backend/.env
     ports:
       - "5000:5000"
     depends_on:
@@ -43,7 +39,8 @@ services:
       context: ./frontend
       dockerfile: Dockerfile
     environment:
-      VITE_BACKEND_URL: http://backend:5000
+      VITE_BACKEND_URL: https://streaming-blonde-yields-cons.trycloudflare.com
+      VITE_GOOGLE_CLIENT_ID: "878096511875-p87jsi9l6bbcsveknsoec4bbota3q7v8.apps.googleusercontent.com"
     ports:
       - "3000:3000"
     depends_on:
