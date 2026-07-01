@@ -511,3 +511,28 @@ export function initiateGithubLogin(): void {
   );
   window.location.href = `${backendUrl}/api/auth/github/authorize`;
 }
+
+// ── TEMPORARY: Dev Admin Login ────────────────────────────────────────────
+// Purpose : Allow dev team access while Google OAuth is broken.
+// Remove  : Delete this entire block once Google OAuth is fixed.
+// ──────────────────────────────────────────────────────────────────────────
+
+export async function devAdminLogin(password: string): Promise<AuthResponse> {
+  const res = await fetch(`${BACKEND_URL}/api/auth/dev-admin-login`, {
+    method: "POST",
+    headers: { "Content-Type": "application/json" },
+    body: JSON.stringify({ password }),
+  });
+  if (!res.ok) {
+    const body = await res.json().catch(() => ({ detail: "Invalid admin password." }));
+    throw new Error(body.detail ?? "Admin login failed");
+  }
+  const data: AuthResponse = await res.json();
+  if (data.access_token && typeof window !== "undefined") {
+    localStorage.setItem("qs_token", data.access_token);
+  }
+  return data;
+}
+
+// ── END TEMPORARY: Dev Admin Login ────────────────────────────────────────
+

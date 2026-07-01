@@ -523,6 +523,52 @@ async def github_callback(code: str, state: str | None = None, db: AsyncSession 
         )
 
 
+# ── TEMPORARY: Dev Admin Login ─────────────────────────────────────────────
+# Purpose : Allow dev team access while Google OAuth is broken.
+# Remove  : Delete this entire block once Google OAuth is fixed.
+# Added   : 2026-07-01
+# ───────────────────────────────────────────────────────────────────────────
+
+class DevAdminLoginRequest(BaseModel):
+    password: str
+
+
+@router.post("/dev-admin-login", response_model=TokenResponse)
+async def dev_admin_login(body: DevAdminLoginRequest, db: AsyncSession = Depends(get_db)):
+    """TEMPORARY: Dev-only admin login. Remove after Google OAuth is fixed."""
+    DEV_ADMIN_PASSWORD = "admin321"
+
+    if body.password != DEV_ADMIN_PASSWORD:
+        raise HTTPException(status_code=401, detail="Invalid admin password.")
+
+    # Find or create the dev admin account
+    admin_email = "admin@silicofeller.com"
+    result = await db.execute(select(User).where(User.email == admin_email))
+    user = result.scalar_one_or_none()
+
+    if not user:
+        user = User(
+            name="Admin User",
+            email=admin_email,
+            hashed_password=hash_password(DEV_ADMIN_PASSWORD),
+            role=UserRole.admin,
+            organization="Silicofeller Labs",
+            is_verified=True,
+        )
+        db.add(user)
+        await db.flush()
+        await db.commit()
+        await db.refresh(user)
+
+    token = create_access_token(
+        {"sub": user.id},
+        timedelta(minutes=settings.access_token_expire_minutes),
+    )
+    return TokenResponse(access_token=token, user=_user_to_dict(user))
+
+# ── END TEMPORARY: Dev Admin Login ─────────────────────────────────────────
+
+
 @router.get("/test-email")
 async def test_email():
     import traceback

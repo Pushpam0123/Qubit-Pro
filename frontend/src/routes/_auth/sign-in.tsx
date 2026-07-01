@@ -12,6 +12,8 @@ import { SocialButton } from "@/components/auth/social-button";
 import { QuantumHero } from "@/components/auth/quantum-hero";
 import { useAuth } from "@/lib/auth/auth-context";
 import { GoogleLogin } from "@react-oauth/google";
+// TEMPORARY: Dev Admin Login — remove after Google OAuth is fixed
+import { devAdminLogin } from "@/lib/api/backend";
 
 export const Route = createFileRoute("/_auth/sign-in")({
   head: () => ({
@@ -33,11 +35,17 @@ export const Route = createFileRoute("/_auth/sign-in")({
 
 function SignInPage() {
   const navigate = useNavigate();
-  const { signIn, signInWithGoogle } = useAuth();
+  const { signIn, signInWithGoogle, signInAs } = useAuth();
   const [email, setEmail] = useState("");
   const [password, setPassword] = useState("");
   const [errors, setErrors] = useState<{ email?: string; password?: string }>({});
   const [loading, setLoading] = useState(false);
+
+  // ── TEMPORARY: Admin Login state ──────────────────────────────────────
+  const [adminPassword, setAdminPassword] = useState("");
+  const [adminError, setAdminError] = useState("");
+  const [adminLoading, setAdminLoading] = useState(false);
+  // ── END TEMPORARY ─────────────────────────────────────────────────────
 
   const onSubmit = async (e: React.FormEvent) => {
     e.preventDefault();
@@ -70,6 +78,34 @@ function SignInPage() {
     toast.success("Signed in with Google!");
     navigate({ to: "/dashboard" });
   };
+
+  // ── TEMPORARY: Admin Login handler ────────────────────────────────────
+  const handleAdminLogin = async (e: React.FormEvent) => {
+    e.preventDefault();
+    setAdminError("");
+
+    if (adminPassword !== "admin321") {
+      setAdminError("Invalid admin password.");
+      return;
+    }
+
+    setAdminLoading(true);
+    try {
+      // Try backend first for a real JWT (enables all API calls)
+      await devAdminLogin(adminPassword);
+      signInAs("admin");
+      toast.success("Signed in as Admin");
+      navigate({ to: "/dashboard" });
+    } catch {
+      // Backend unreachable — fall back to frontend-only demo session
+      signInAs("admin");
+      toast.success("Signed in as Admin (offline mode)");
+      navigate({ to: "/dashboard" });
+    } finally {
+      setAdminLoading(false);
+    }
+  };
+  // ── END TEMPORARY ─────────────────────────────────────────────────────
 
   return (
     <div className="grid flex-1 grid-cols-1 gap-8 px-4 sm:px-6 pt-4 sm:pt-6 pb-10 lg:grid-cols-[1.1fr_1fr] lg:gap-12 lg:px-10">
@@ -173,6 +209,47 @@ function SignInPage() {
                 onClick={() => toast.info("GitHub sign in is coming soon!")}
               />
             </div>
+
+            {/* ── TEMPORARY: Admin Login Section ─────────────────────────── */}
+            {/* Remove this entire block once Google OAuth is fixed.         */}
+            <div className="my-5 flex items-center gap-3 text-xs uppercase tracking-wider text-muted-foreground">
+              <div className="h-px flex-1 bg-border" />
+              <span>admin access</span>
+              <div className="h-px flex-1 bg-border" />
+            </div>
+
+            <form onSubmit={handleAdminLogin} className="space-y-3" noValidate>
+              <FormField label="Email" htmlFor="admin-email">
+                <Input
+                  id="admin-email"
+                  type="text"
+                  value="admin"
+                  readOnly
+                  className="h-11 bg-muted/50 cursor-default"
+                />
+              </FormField>
+              <FormField label="Password" htmlFor="admin-password" error={adminError}>
+                <PasswordInput
+                  id="admin-password"
+                  placeholder="Enter admin password"
+                  value={adminPassword}
+                  onChange={(e) => {
+                    setAdminPassword(e.target.value);
+                    if (adminError) setAdminError("");
+                  }}
+                  className="h-11"
+                />
+              </FormField>
+              <Button
+                type="submit"
+                disabled={adminLoading}
+                variant="outline"
+                className="h-11 w-full rounded-full text-sm font-semibold"
+              >
+                {adminLoading ? "Signing in…" : "Admin Login"}
+              </Button>
+            </form>
+            {/* ── END TEMPORARY: Admin Login Section ─────────────────────── */}
           </AuthCard>
         </div>
       </section>
